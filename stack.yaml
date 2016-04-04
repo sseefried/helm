@@ -1,11 +1,15 @@
+resolver: lts-3.0
 flags: {}
 packages:
-    - '.'
+- location:
+    git: https://github.com/sseefried/hsSDL2
+    commit: e824a16c8374173796b607bf976a45c0f79a121e
+- location:
+    git: https://github.com/sseefried/hs-cairo
+    commit: 922c6fab2d632c220ebd3f07b737e75537bfda70
 extra-deps:
     - elerea-2.8.0
-    - cairo-0.12.5.3
     - utf8-string-0.3.8
-    - pango-0.12.5.3
-    - sdl2-1.2.0
-    - glib-0.12.5.4
-resolver: lts-2.14
+    - pango-0.13.1.0
+    - glib-0.13.1.0
+
