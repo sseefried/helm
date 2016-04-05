@@ -24,6 +24,7 @@ import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.State
 import Data.Bits
 import Data.Foldable (forM_)
+import qualified Data.Text as T
 import Foreign.C.String
 import Foreign.Marshal.Alloc
 import Foreign.Ptr
@@ -76,9 +77,10 @@ defaultConfig = EngineConfig {
 
 {-| Creates a new engine that can be run later using 'run'. -}
 startup :: EngineConfig -> IO Engine
-startup (EngineConfig { .. }) = withCAString windowTitle $ \title -> do
-    window <- SDL.createWindow title 0 0 (fromIntegral w) (fromIntegral h) wflags
-    renderer <- SDL.createRenderer window (-1) rflags
+startup (EngineConfig { .. }) = do
+    window <- SDL.createWindow windowTitle (SDL.Position 0 0)
+                (SDL.Size (fromIntegral w) (fromIntegral h)) wflags
+    renderer <- SDL.createRenderer window (SDL.Device (-1)) rflags
 
     return Engine { window   = window
                   , renderer = renderer
@@ -88,10 +90,8 @@ startup (EngineConfig { .. }) = withCAString windowTitle $ \title -> do
 
   where
     (w, h) = windowDimensions
-    wflags = foldl (.|.) 0 $ [SDL.windowFlagShown] ++
-                             [SDL.windowFlagResizable | windowIsResizable] ++
-                             [SDL.windowFlagFullscreen | windowIsFullscreen]
-    rflags = (.|.) SDL.rendererFlagPresentVSync SDL.rendererFlagAccelerated
+    wflags = [SDL.WindowShown, SDL.WindowResizable, SDL.WindowFullscreen]
+    rflags = [SDL.PresentVSync, SDL.Accelerated]
 
 {-| Initializes and runs the game engine. The supplied signal generator is
     constantly sampled for an element to render until the user quits.
@@ -120,27 +120,23 @@ run config element = do engine <- startup config
 exposed :: Signal ()
 exposed = Signal getExposed
   where
-    getExposed = effectful $ alloca $ \eventptr -> do
-      SDL.pumpEvents
-      status <- SDL.pollEvent eventptr
-
-      if status == 1 then do
-        event <- peek eventptr
-
-        case event of
-          SDL.WindowEvent _ _ _ e _ _ -> return $ if e == SDL.windowEventExposed
-                                                  then Changed ()
-                                                  else Unchanged ()
-          _ -> return $ Unchanged ()
-      else return $ Unchanged ()
+    getExposed = effectful $ do
+      -- FIXME: Expose this in hsSDL2
+--      SDL.pumpEvents
+      mbEvent <- SDL.pollEvent
+      return $ case mbEvent of
+        Just (SDL.Event { SDL.eventData = SDL.Window { SDL.windowEvent = e }})  -> Changed ()
+        _ -> Unchanged ()
 
 {-| An event that triggers when SDL thinks we need to quit. -}
 quit :: Signal ()
 quit = Signal getQuit
   where
     getQuit = effectful $ do
-      q <- SDL.quitRequested
-      return (if q then Changed () else Unchanged ())
+      mbEvent <- SDL.pollEvent
+      return $ case mbEvent of
+        Just (SDL.Event { SDL.eventData = SDL.Quit }) -> Changed ()
+        _ -> Unchanged ()
 
 continue' :: Signal Bool
 continue' = (==0) <~ count quit
@@ -164,27 +160,19 @@ renderIfChanged engine event =  case event of
 {-| A utility function that renders a previously sampled element
     using an engine state. -}
 render :: Engine -> Element -> (Int, Int) -> IO Engine
-render engine@(Engine { .. }) element (w, h) = alloca $ \pixelsptr ->
-                                               alloca $ \pitchptr  -> do
-  format <- SDL.masksToPixelFormatEnum 32 (fromBE32 0x0000ff00)
-              (fromBE32 0x00ff0000) (fromBE32 0xff000000) (fromBE32 0x000000ff)
+render engine@(Engine { .. }) element (w, h) = do
+  texture <- SDL.createTexture renderer SDL.PixelFormatARGB8888
+               SDL.TextureAccessStreaming (fromIntegral w) (fromIntegral h)
 
-  texture <- SDL.createTexture renderer format
-               SDL.textureAccessStreaming (fromIntegral w) (fromIntegral h)
-
-  SDL.lockTexture texture nullPtr pixelsptr pitchptr
-
-  pixels <- peek pixelsptr
-  pitch <- fromIntegral <$> peek pitchptr
-
-  res <- Cairo.withImageSurfaceForData (castPtr pixels)
+  res <- SDL.lockTexture texture Nothing $ \(pixels, pitch) -> do
+    Cairo.withImageSurfaceForData (castPtr pixels)
            Cairo.FormatARGB32 w h pitch $ \surface -> Cairo.renderWith surface
              $ evalStateT (render' w h element) engine
 
   SDL.unlockTexture texture
 
   SDL.renderClear renderer
-  SDL.renderCopy renderer texture nullPtr nullPtr
+  SDL.renderCopy renderer texture Nothing Nothing
   SDL.destroyTexture texture
   SDL.renderPresent renderer
 
@@ -255,7 +243,7 @@ renderElement (ImageElement (sx, sy) sw sh src stretch) = do
                 Cairo.paint
             else
                 Cairo.fill
-                
+
             Cairo.restore
 
 renderElement (TextElement (Text { textColor = (Color r g b a), .. })) = do
@@ -264,7 +252,7 @@ renderElement (TextElement (Text { textColor = (Color r g b a), .. })) = do
     layout <- lift $ Pango.createLayout textUTF8
 
     Cairo.liftIO $ Pango.layoutSetAttributes layout
-      [ Pango.AttrFamily { paStart = i, paEnd = j, paFamily = textTypeface }
+      [ Pango.AttrFamily { paStart = i, paEnd = j, paFamily = T.pack textTypeface }
       , Pango.AttrWeight { paStart = i, paEnd = j, paWeight = mapFontWeight textWeight }
       , Pango.AttrStyle  { paStart = i, paEnd = j, paStyle = mapFontStyle textStyle }
       , Pango.AttrSize   { paStart = i, paEnd = j, paSize = textHeight }

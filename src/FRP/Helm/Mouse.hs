@@ -13,6 +13,7 @@ module FRP.Helm.Mouse
 
 import Control.Applicative (pure)
 import Data.Bits
+import Data.Maybe
 import Foreign.Marshal.Alloc
 import Foreign.Ptr
 import Foreign.Storable
@@ -20,6 +21,8 @@ import FRP.Elerea.Param hiding (Signal)
 import FRP.Helm.Sample
 import FRP.Helm.Signal
 import qualified Graphics.UI.SDL as SDL
+import qualified Graphics.UI.SDL.Events as SDL
+
 
 {-| A data structure describing a button on a mouse. -}
 data Mouse
@@ -28,6 +31,16 @@ data Mouse
   | RightMouse
   | X1Mouse
   | X2Mouse deriving (Show, Eq, Ord, Read)
+
+toMouse :: SDL.MouseButton -> Maybe Mouse
+toMouse m = case m of
+  SDL.LeftButton   -> Just LeftMouse
+  SDL.RightButton  -> Just RightMouse
+  SDL.MiddleButton -> Just MiddleMouse
+  SDL.MouseX1      -> Just X1Mouse
+  SDL.MouseX2      -> Just X2Mouse
+  _                 -> Nothing
+
 
 {- All integer values of this enum are equivalent to the SDL key enum. -}
 instance Enum Mouse where
@@ -48,12 +61,9 @@ instance Enum Mouse where
 position :: Signal (Int, Int)
 position = Signal $ getPosition >>= transfer (pure (0,0)) update
   where
-    getPosition = effectful $ alloca $ \xptr -> alloca $ \yptr -> do
-      _ <- SDL.getMouseState xptr yptr
-      x_ <- peek xptr
-      y_ <- peek yptr
-
-      return (fromIntegral x_, fromIntegral y_)
+    getPosition = effectful $ do
+      (x,y,_) <- SDL.getMouseState
+      return (fromIntegral x, fromIntegral y)
 
 {-| The current x-coordinate of the mouse. -}
 x :: Signal Int
@@ -74,9 +84,8 @@ isDownButton :: Mouse -> Signal Bool
 isDownButton m = Signal $ getDown >>= transfer (pure False) update
   where
     getDown = effectful $ do
-      flags <- SDL.getMouseState nullPtr nullPtr
-
-      return $ (.&.) (fromIntegral flags) (fromEnum m) /= 0
+      (_,_,mbs) <- SDL.getMouseState
+      return $ m `elem` (catMaybes (map toMouse mbs))
 
 {-| Always equal to unit. Event triggers on every mouse click. -}
 clicks :: Signal ()

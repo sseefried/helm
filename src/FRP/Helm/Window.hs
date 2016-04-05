@@ -22,13 +22,9 @@ dimensions =
   Signal $ input >>= getDimensions >>= transfer (pure (0,0)) update
   where
     getDimensions = effectful1 action
-    action engine = alloca $ \wptr -> alloca $ \hptr -> do
-	  SDL.getWindowSize (window engine) wptr hptr
-
-	  w <- peek wptr
-	  h <- peek hptr
-
-	  return (fromIntegral w, fromIntegral h)
+    action engine = do
+      SDL.Size w h <- SDL.getWindowSize (window engine)
+      return (fromIntegral w, fromIntegral h)
 
 {-| The current position of the window. -}
 position :: Signal (Int, Int)
@@ -36,13 +32,9 @@ position =
   Signal $ input >>= getPosition >>= transfer (pure (0,0)) update
   where
     getPosition = effectful1 action
-    action engine = alloca $ \xptr -> alloca $ \yptr -> do
-	  SDL.getWindowPosition (window engine) xptr yptr
-
-	  x <- peek xptr
-	  y <- peek yptr
-
-	  return (fromIntegral x, fromIntegral y)
+    action engine = do
+      SDL.Position x y <- SDL.getWindowPosition (window engine)
+      return (fromIntegral x, fromIntegral y)
 
 {-| The current width of the window. -}
 width :: Signal Int
