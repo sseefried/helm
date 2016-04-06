@@ -44,7 +44,6 @@ import System.Endian
 import qualified Data.Map as Map
 import qualified Graphics.UI.SDL as SDL
 import qualified Graphics.Rendering.Cairo as Cairo
-import qualified Graphics.Rendering.Pango as Pango
 
 type Helm a = StateT Engine Cairo.Render a
 
@@ -246,43 +245,11 @@ renderElement (ImageElement (sx, sy) sw sh src stretch) = do
 
             Cairo.restore
 
-renderElement (TextElement (Text { textColor = (Color r g b a), .. })) = do
-    lift Cairo.save
-
-    layout <- lift $ Pango.createLayout textUTF8
-
-    Cairo.liftIO $ Pango.layoutSetAttributes layout
-      [ Pango.AttrFamily { paStart = i, paEnd = j, paFamily = T.pack textTypeface }
-      , Pango.AttrWeight { paStart = i, paEnd = j, paWeight = mapFontWeight textWeight }
-      , Pango.AttrStyle  { paStart = i, paEnd = j, paStyle = mapFontStyle textStyle }
-      , Pango.AttrSize   { paStart = i, paEnd = j, paSize = textHeight }
-      ]
-
-    Pango.PangoRectangle x y w h <- fmap snd
-      $ Cairo.liftIO $ Pango.layoutGetExtents layout
-
-    lift $ do Cairo.translate ((-w / 2) -x) ((-h / 2) - y)
-              Cairo.setSourceRGBA r g b a
-              Pango.showLayout layout
-              Cairo.restore
-
+renderElement (TextElement (Text { textColor = (Color r g b a), .. })) =
+   error "no support for rendering text elements"
   where
     i = 0
     j = length textUTF8
-
-{-| A utility function that maps to a Pango font weight based off our variant. -}
-mapFontWeight :: FontWeight -> Pango.Weight
-mapFontWeight weight = case weight of
-  LightWeight  -> Pango.WeightLight
-  NormalWeight -> Pango.WeightNormal
-  BoldWeight   -> Pango.WeightBold
-
-{-| A utility function that maps to a Pango font style based off our variant. -}
-mapFontStyle :: FontStyle -> Pango.FontStyle
-mapFontStyle style = case style of
-  NormalStyle  -> Pango.StyleNormal
-  ObliqueStyle -> Pango.StyleOblique
-  ItalicStyle  -> Pango.StyleItalic
 
 {-| A utility function that goes into a state of transformation and then pops
     it when finished. -}

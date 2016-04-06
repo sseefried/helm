@@ -11,6 +11,3 @@ packages:
 extra-deps:
     - elerea-2.8.0
     - utf8-string-0.3.8
-    - pango-0.13.1.0
-    - glib-0.13.1.0
-
