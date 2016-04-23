@@ -88,8 +88,11 @@ startup (EngineConfig { .. }) = do
                   }
 
   where
+    optWhen :: Bool -> a -> [a]
+    optWhen b a = if b then [a] else []
     (w, h) = windowDimensions
-    wflags = [SDL.WindowShown, SDL.WindowResizable, SDL.WindowFullscreen]
+    wflags = SDL.WindowShown:(optWhen windowIsResizable  SDL.WindowResizable ++
+                              optWhen windowIsFullscreen SDL.WindowFullscreen)
     rflags = [SDL.PresentVSync, SDL.Accelerated]
 
 {-| Initializes and runs the game engine. The supplied signal generator is
