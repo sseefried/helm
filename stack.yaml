@@ -4,7 +4,7 @@ packages:
 - .
 - location:
     git: https://github.com/sseefried/hsSDL2
-    commit: 1c0511b06ebea7dfc4eaaf86b2d40b7cb5017800
+    commit: 942be9e67f39c4804efcf6248284e58b675ed490
 - location:
     git: https://github.com/sseefried/hs-cairo
     commit: 922c6fab2d632c220ebd3f07b737e75537bfda70
