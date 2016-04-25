@@ -33,6 +33,7 @@ library
     FRP.Helm.Engine
     FRP.Helm.Keyboard
     FRP.Helm.Mouse
+    FRP.Helm.Touch
     FRP.Helm.Random
     FRP.Helm.Sample
     FRP.Helm.Signal
