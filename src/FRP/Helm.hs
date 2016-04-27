@@ -5,6 +5,7 @@ module FRP.Helm (
   Time,
   EngineConfig(..),
   -- * Engine
+  runAndQuitOnSignal,
   run,
   defaultConfig,
   -- * Prelude
@@ -95,6 +96,22 @@ startup (EngineConfig { .. }) = do
                               optWhen windowIsFullscreen SDL.WindowFullscreen)
     rflags = [SDL.PresentVSync, SDL.Accelerated]
 
+
+{-| A more generic version of @run@ that allows you to provide a signal
+    that when true, will quit
+-}
+runAndQuitOnSignal :: EngineConfig -> Signal Bool -> Signal Element -> IO ()
+runAndQuitOnSignal config quitOn element  = do
+  engine <- startup config
+  run_ engine $ application <~ element
+                            ~~ Window.dimensions
+                            ~~ ((&&) <$> (not <$> quitOn) <*> continue')
+                            ~~ exposed
+  where
+    application :: Element -> (Int, Int) -> Bool -> () -> Application
+    application e d c _ = Application e d c
+    run_ eng (Signal gen) = (start gen >>= run' eng) `finally` SDL.quit
+
 {-| Initializes and runs the game engine. The supplied signal generator is
     constantly sampled for an element to render until the user quits.
 
@@ -108,15 +125,7 @@ startup (EngineConfig { .. }) = do
     > main = run defaultConfig $ lift render Window.dimensions
  -}
 run :: EngineConfig -> Signal Element -> IO ()
-run config element = do engine <- startup config
-                        run_ engine $ application <~ element
-                                                  ~~ Window.dimensions
-                                                  ~~ continue'
-                                                  ~~ exposed
-  where
-    application :: Element -> (Int, Int) -> Bool -> () -> Application
-    application e d c _ = Application e d c
-    run_ eng (Signal gen) = (start gen >>= run' eng) `finally` SDL.quit
+run config element = runAndQuitOnSignal config (constant False) element
 
 {-| An event that triggers when SDL thinks we need to re-draw. -}
 exposed :: Signal ()
