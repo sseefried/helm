@@ -40,6 +40,8 @@ module FRP.Helm.Graphics (
   -- * Transforming
   rotate,
   scale,
+  scaleX,
+  scaleY,
   move,
   moveX,
   moveY,
