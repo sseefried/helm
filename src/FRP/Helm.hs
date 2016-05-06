@@ -265,9 +265,9 @@ renderElement (TextElement (Text { textColor = (Color r g b a), .. })) =
 
 {-| A utility function that goes into a state of transformation and then pops
     it when finished. -}
-withTransform :: Double -> Double -> Double -> Double -> Helm () -> Helm ()
-withTransform s t x y f = do
-  lift $ Cairo.save >> Cairo.scale s s >> Cairo.translate x y >> Cairo.rotate t
+withTransform :: Double -> Double -> Double -> Double -> Double -> Helm () -> Helm ()
+withTransform sx sy t x y f = do
+  lift $ Cairo.save >> Cairo.scale sx sy >> Cairo.translate x y >> Cairo.rotate t
   f
   lift Cairo.restore
 
@@ -328,7 +328,8 @@ setFillStyle' pattern points = do
 
 {-| A utility that renders a form. -}
 renderForm :: Form -> Helm ()
-renderForm Form { .. } = withTransform formScale formTheta formX formY $
+renderForm Form { .. } =
+  withTransform formScaleX formScaleY formTheta formX formY $
   case formStyle of
     PathForm style ~ps @ ((hx, hy) : _) -> lift $ do
       Cairo.newPath

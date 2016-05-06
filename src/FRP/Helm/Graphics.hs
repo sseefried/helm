@@ -112,7 +112,8 @@ croppedImage pos w h src = ImageElement pos w h src False
     into what sort of graphics can be wrapped in a form. -}
 data Form = Form {
   formTheta :: Double,
-  formScale :: Double,
+  formScaleX :: Double,
+  formScaleY :: Double,
   formX :: Double,
   formY :: Double,
   formStyle :: FormStyle
@@ -172,7 +173,8 @@ data FormStyle = PathForm LineStyle Path |
 
 {-| Utility function for creating a form. -}
 form :: FormStyle -> Form
-form style = Form { formTheta = 0, formScale = 1, formX = 0, formY = 0, formStyle = style }
+form style = Form { formTheta = 0, formScaleX = 1, formScaleY = 1
+                  , formX = 0, formY = 0, formStyle = style }
 
 {-| Utility function for creating a filled form from a fill style and shape. -}
 fill :: FillStyle -> Shape -> Form
@@ -225,7 +227,15 @@ rotate t f = f { formTheta = t + formTheta f }
 
 {-| Scales a form by an amount, e.g. scaling by /2.0/ will double the size. -}
 scale :: Double -> Form -> Form
-scale n f = f { formScale = n * formScale f }
+scale n f = f { formScaleX = n * formScaleX f
+              , formScaleY = n * formScaleY f }
+
+scaleX :: Double -> Form -> Form
+scaleX n f = f { formScaleX = n * formScaleX f }
+
+scaleY :: Double -> Form -> Form
+scaleY n f = f { formScaleY = n * formScaleY f }
+
 
 {-| Moves a form relative to its current position. -}
 move :: (Double, Double) -> Form -> Form
@@ -298,6 +308,6 @@ circle r = ArcShape (0, 0) 0 (2 * pi) r (1, 1)
     an amount of sides and radius. -}
 ngon :: Int -> Double -> Shape
 ngon n r = PolygonShape (map (\i -> (r * cos (t * i), r * sin (t * i))) [0 .. fromIntegral (n - 1)])
-  where 
+  where
     m = fromIntegral n
     t = 2 * pi / m
